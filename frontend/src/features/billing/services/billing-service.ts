@@ -5,6 +5,7 @@ export type BillingSummary = {
   workspace: Workspace;
   membership_role: "owner" | "admin" | "member";
   subscription: {
+    provider_customer_id?: string;
     plan: "free" | "pro" | "team";
     status: "trialing" | "active" | "past_due" | "canceled";
     current_period_end?: string;

@@ -23,17 +23,13 @@ func (r *billingRepoStub) GetSummary(context.Context, string, string) (domain.Bi
 	return r.summary, nil
 }
 
-func (r *billingRepoStub) SaveEvent(_ context.Context, id, _ string, _ []byte) (bool, error) {
+func (r *billingRepoStub) ApplyEvent(_ context.Context, id, _ string, _ []byte, subscription domain.Subscription) (bool, error) {
 	if r.events[id] {
 		return false, nil
 	}
 	r.events[id] = true
-	return true, nil
-}
-
-func (r *billingRepoStub) ApplySubscription(_ context.Context, subscription domain.Subscription) error {
 	r.applied = subscription
-	return nil
+	return true, nil
 }
 
 type billingProviderStub struct{ event BillingEvent }

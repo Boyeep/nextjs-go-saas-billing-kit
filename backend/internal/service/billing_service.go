@@ -82,16 +82,12 @@ func (s *BillingService) Webhook(ctx context.Context, payload []byte, signature 
 	if err != nil {
 		return false, fmt.Errorf("verify webhook: %w", err)
 	}
-	inserted, err := s.repository.SaveEvent(ctx, event.ID, event.Type, payload)
-	if err != nil || !inserted {
-		return inserted, err
-	}
 	graceEnd := (*time.Time)(nil)
 	if event.Status == "past_due" {
 		value := time.Now().UTC().Add(72 * time.Hour)
 		graceEnd = &value
 	}
-	return true, s.repository.ApplySubscription(ctx, domain.Subscription{
+	return s.repository.ApplyEvent(ctx, event.ID, event.Type, payload, domain.Subscription{
 		WorkspaceID: event.WorkspaceID, Provider: "stripe", ProviderCustomerID: event.CustomerID,
 		ProviderSubID: event.SubscriptionID, Plan: event.Plan, Status: event.Status,
 		CurrentPeriodEnd: event.PeriodEnd, GracePeriodEnd: graceEnd, CancelAtPeriodEnd: event.CancelAtEnd,

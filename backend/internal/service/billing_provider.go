@@ -61,7 +61,11 @@ func NewBillingProvider(cfg config.BillingConfig) (BillingProvider, error) {
 }
 
 func (p *StripeBillingProvider) Checkout(ctx context.Context, workspaceID, customerID, priceID string) (string, error) {
-	values := url.Values{"mode": {"subscription"}, "success_url": {p.successURL}, "cancel_url": {p.cancelURL}, "line_items[0][price]": {priceID}, "line_items[0][quantity]": {"1"}, "subscription_data[metadata][workspace_id]": {workspaceID}}
+	plan := strings.TrimPrefix(priceID, "price_")
+	if plan != "pro" && plan != "team" {
+		return "", errors.New("price must map to the pro or team plan")
+	}
+	values := url.Values{"mode": {"subscription"}, "success_url": {p.successURL}, "cancel_url": {p.cancelURL}, "line_items[0][price]": {priceID}, "line_items[0][quantity]": {"1"}, "subscription_data[metadata][workspace_id]": {workspaceID}, "subscription_data[metadata][plan]": {plan}}
 	if customerID != "" {
 		values.Set("customer", customerID)
 	}

@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -16,8 +15,7 @@ var ErrBillingNotFound = errors.New("billing record not found")
 type BillingRepository interface {
 	ListWorkspaces(context.Context, string) ([]domain.Workspace, error)
 	GetSummary(context.Context, string, string) (domain.BillingSummary, error)
-	SaveEvent(context.Context, string, string, []byte) (bool, error)
-	ApplySubscription(context.Context, domain.Subscription) error
+	ApplyEvent(context.Context, string, string, []byte, domain.Subscription) (bool, error)
 }
 
 func (r *PostgresBillingRepository) ListWorkspaces(ctx context.Context, userID string) ([]domain.Workspace, error) {
@@ -75,20 +73,26 @@ WHERE w.id = $1`, workspaceID, userID).Scan(
 	return summary, nil
 }
 
-func (r *PostgresBillingRepository) SaveEvent(ctx context.Context, id, eventType string, payload []byte) (bool, error) {
-	var data map[string]any
-	if err := json.Unmarshal(payload, &data); err != nil {
+func (r *PostgresBillingRepository) ApplyEvent(ctx context.Context, id, eventType string, payload []byte, subscription domain.Subscription) (bool, error) {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
 		return false, err
 	}
-	result, err := r.db.Exec(ctx, `INSERT INTO billing_events(provider_event_id,event_type,payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, id, eventType, payload)
-	return result.RowsAffected() == 1, err
-}
-
-func (r *PostgresBillingRepository) ApplySubscription(ctx context.Context, subscription domain.Subscription) error {
-	_, err := r.db.Exec(ctx, `UPDATE subscriptions SET provider=$2, provider_customer_id=NULLIF($3,''), provider_subscription_id=NULLIF($4,''), plan=$5, status=$6, current_period_end=$7, grace_period_end=$8, cancel_at_period_end=$9, updated_at=$10 WHERE workspace_id=$1`,
+	defer func() { _ = tx.Rollback(ctx) }()
+	result, err := tx.Exec(ctx, `INSERT INTO billing_events(provider_event_id,event_type,payload) VALUES($1,$2,$3) ON CONFLICT DO NOTHING`, id, eventType, payload)
+	if err != nil || result.RowsAffected() == 0 {
+		return false, err
+	}
+	result, err = tx.Exec(ctx, `UPDATE subscriptions SET provider=$2, provider_customer_id=NULLIF($3,''), provider_subscription_id=NULLIF($4,''), plan=$5, status=$6, current_period_end=$7, grace_period_end=$8, cancel_at_period_end=$9, updated_at=$10 WHERE workspace_id=$1`,
 		subscription.WorkspaceID, subscription.Provider, subscription.ProviderCustomerID,
 		subscription.ProviderSubID, subscription.Plan, subscription.Status,
 		subscription.CurrentPeriodEnd, subscription.GracePeriodEnd,
 		subscription.CancelAtPeriodEnd, time.Now().UTC())
-	return err
+	if err != nil {
+		return false, err
+	}
+	if result.RowsAffected() != 1 {
+		return false, ErrBillingNotFound
+	}
+	return true, tx.Commit(ctx)
 }

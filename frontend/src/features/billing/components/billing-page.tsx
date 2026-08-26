@@ -126,7 +126,7 @@ export function BillingPage() {
             Plans tied to real entitlements.
           </h1>
         </div>
-        {summary && (
+        {summary?.subscription.provider_customer_id && (
           <button
             onClick={() => void portal()}
             disabled={busy !== null}
@@ -180,7 +180,7 @@ export function BillingPage() {
                     {plan.quota}
                   </p>
                   <button
-                    disabled={current || busy !== null}
+                    disabled={current || plan.id === "free" || busy !== null}
                     onClick={() => void checkout(plan.id)}
                     className="mt-auto h-11 rounded-full border border-slate-900 px-4 text-sm font-semibold transition hover:bg-slate-950 hover:text-white disabled:border-slate-200 disabled:text-slate-400"
                   >

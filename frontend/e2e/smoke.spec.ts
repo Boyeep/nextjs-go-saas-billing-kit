@@ -23,7 +23,9 @@ test.describe("starter smoke flows", () => {
         name: "Sign in to open your SaaS workspace.",
       }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Continue to login" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Continue to login" }),
+    ).toBeVisible();
 
     await page.goto("/collections");
 
