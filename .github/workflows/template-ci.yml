@@ -35,6 +35,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
 
       - name: Scan git history for secrets
         run: npm run check:secrets
@@ -55,6 +56,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
 
       - name: Lint GitHub Actions workflows
         run: npm run check:workflows
@@ -128,6 +130,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
 
       - name: Test
         run: go test ./...
